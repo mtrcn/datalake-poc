@@ -1,21 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-
+using Amazon.Glue;
+using Amazon.Glue.Model;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.S3Events;
-using Amazon.S3;
-using Amazon.S3.Util;
+using Amazon.Lambda.Serialization.Json;
+using System;
+using System.Threading.Tasks;
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
-[assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.Json.JsonSerializer))]
+[assembly: LambdaSerializer(typeof(JsonSerializer))]
 
-namespace AWSDataLake
+namespace GlueTrigger
 {
     public class Function
     {
-        IAmazonS3 S3Client { get; set; }
+        private IAmazonGlue GlueClient { get; }
+
 
         /// <summary>
         /// Default constructor. This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
@@ -24,41 +23,42 @@ namespace AWSDataLake
         /// </summary>
         public Function()
         {
-            S3Client = new AmazonS3Client();
+            GlueClient = new AmazonGlueClient();
         }
 
         /// <summary>
         /// Constructs an instance with a preconfigured S3 client. This can be used for testing the outside of the Lambda environment.
         /// </summary>
-        /// <param name="s3Client"></param>
-        public Function(IAmazonS3 s3Client)
+        public Function(IAmazonGlue glueClient)
         {
-            this.S3Client = s3Client;
         }
         
         /// <summary>
-        /// This method is called for every Lambda invocation. This method takes in an S3 event object and can be used 
-        /// to respond to S3 notifications.
+        /// This method is called when associated S3 bucket has new file and trigger AWS Glue to transform it.
         /// </summary>
-        /// <param name="evnt"></param>
-        /// <param name="context"></param>
-        /// <returns></returns>
         public async Task<string> FunctionHandler(S3Event evnt, ILambdaContext context)
         {
+            context.Logger.LogLine("Started!");
             var s3Event = evnt.Records?[0].S3;
             if(s3Event == null)
             {
-                return null;
+                context.Logger.LogLine("Event not found!");
+                return "Event not found!";
             }
 
             try
             {
-                var response = await this.S3Client.GetObjectMetadataAsync(s3Event.Bucket.Name, s3Event.Object.Key);
-                return response.Headers.ContentType;
+                context.Logger.LogLine("Starting job run...");
+                await GlueClient.StartJobRunAsync(new StartJobRunRequest()
+                {
+                    AllocatedCapacity = 2,
+                    JobName = Environment.GetEnvironmentVariable("GLUE_JOB_NAME")
+                });
+                context.Logger.LogLine("Done");
+                return "Done";
             }
             catch(Exception e)
             {
-                context.Logger.LogLine($"Error getting object {s3Event.Object.Key} from bucket {s3Event.Bucket.Name}. Make sure they exist and your bucket is in the same region as this function.");
                 context.Logger.LogLine(e.Message);
                 context.Logger.LogLine(e.StackTrace);
                 throw;

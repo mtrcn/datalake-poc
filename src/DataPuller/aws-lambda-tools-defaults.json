@@ -1,0 +1,17 @@
+
+{
+    "profile" : "default",
+    "region"  : "eu-west-1",
+    "configuration" : "Release",
+    "framework"     : "netcoreapp2.0",
+    "function-runtime" : "dotnetcore2.0",
+    "function-memory-size" : 256,
+    "function-timeout"     : 30,
+    "function-handler"     : "DataPuller::DataPuller.Function::FunctionHandler",
+    "function-name"        : "EXACTPOCDL-DataPuller",
+    "function-role"        : "arn:aws:iam::065627307699:role/EXACTDLPOC-DataPull-LambdaRole",
+    "function-subnets"     : "subnet-eefade98,subnet-e83c1e8c,subnet-230b647b",
+    "function-security-groups" : "sg-18c2ab7e",
+    "tracing-mode"             : "PassThrough",
+    "environment-variables"    : ""
+}
